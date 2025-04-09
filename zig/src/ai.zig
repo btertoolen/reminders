@@ -110,7 +110,7 @@ pub const Reminder = struct {
 };
 
 pub const MistralAI = struct {
-    const static_request_content = "The sentence before this one is a request that can be in either english or dutch. Can you turn the request from the sentence before this one into a json message that i can serialize into the following zig struct(Please respond with only the json object, without any formatting): ";
+    const static_request_content = "The sentence before this one is a request that can be in either english or dutch. Can you turn the request from the sentence before this one into a json message that i can serialize into the following zig struct(Please respond with only the json object, without any formatting. Also dont enclose it in '```'): ";
 
     api_key: std.ArrayList(u8) = undefined,
     reminders: std.ArrayList(Reminder) = undefined,
@@ -208,7 +208,7 @@ pub const MistralAI = struct {
             .{ .name = "Accept", .value = "application/json" },
             .{ .name = "Authorization", .value = bearer },
         };
-        const request_body = try std.fmt.allocPrint(allocator, "{{ \"model\": \"mistral-small-latest\", \"messages\": [{{\"role\": \"user\",\"content\": \"{s}\"}}]}}", .{query});
+        const request_body = try std.fmt.allocPrint(allocator, "{{ \"model\": \"mistral-large-latest\", \"messages\": [{{\"role\": \"user\",\"content\": \"{s}\"}}]}}", .{query});
         defer allocator.free(request_body);
 
         const response = try client.fetch(.{
@@ -274,7 +274,7 @@ pub const MistralAI = struct {
                 continue;
             }
 
-            if (reminder.hour != hours_now and reminder.minute != minutes_now) {
+            if (reminder.hour != hours_now or reminder.minute != minutes_now) {
                 continue;
             }
 
@@ -293,7 +293,7 @@ pub const MistralAI = struct {
                 try indexes_to_remove.append(index);
             }
             reminder.day_sent = @intCast(day_of_year);
-
+            std.debug.print("Running reminder {s} with {d}:{d} at {d}:{d}\n", .{ reminder.reminder_text.items, reminder.hour, reminder.minute, hours_now, minutes_now });
             var reminder_to_send = std.ArrayList(u8).init(allocator);
             try reminder_to_send.appendSlice(reminder.reminder_text.items);
             try result.append(reminder_to_send);
@@ -304,6 +304,7 @@ pub const MistralAI = struct {
             _ = self.reminders.orderedRemove(@intCast(idx - decrement_counter));
             decrement_counter = decrement_counter + 1;
         }
+        try self.saveReminders(allocator);
         return result;
     }
 };
